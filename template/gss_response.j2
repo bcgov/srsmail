@@ -1,0 +1,16 @@
+<div class="body">
+Thank you for contacting Geospatial Services! <br>
+Your request has been recieved and if needed our wonderful staff may be intouch with you for more details.<br><br>
+<a href="{{ url }}">Link to your request</a>.<br><br>
+
+<table>
+{% for attribute, value in request.items() %}
+    <TR>
+        <TD>{{ attribute }}</TD>
+        <TD>{{ value }}</TD>
+    </TR>
+{% endfor %}
+</table>
+<p>
+</div>
+<p><br><br>

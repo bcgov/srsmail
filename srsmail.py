@@ -36,6 +36,7 @@ USER = os.environ['SRS_USER']
 AUTH = os.environ['SRS_AUTH']
 ITEM = os.environ['SRS_ITEM']
 SMTP_HOST = os.environ['SMTP_HOST']
+TEST_EMAIL = os.environ.get('TEST_EMAIL')
 db = 'data.db'
 if not os.path.exists(db):
     con = duckdb.connect(db)
@@ -98,14 +99,20 @@ records = gss_project_table.query(where=sql,out_fields="*",return_all_records=Tr
 for r in records.features:
     html = render_template('gss_response.j2', request=r.attributes,
                            url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ')
+
     if r.attributes['Project_Number'] is None:
         proj_num = 'No project'
     else:
         proj_num = r.attributes['Project_Number']
-    # send_email(to='william.burt@gov.bc.ca',subject=r.attributes['Project_Number'],body=html)
-    with open('test.html','w') as f:
-        f.write(html)
-    sql = f"INSERT INTO request_tracker VALUES ('{proj_num}','{r.attributes['Client_Email']}', get_current_time());"
-    con.sql(sql)
+    if TEST_EMAIL:
+        email = TEST_EMAIL
+        send_email(to=email,subject=r.attributes['Project_Number'],body=html)
+    elif '@gov.bc.ca' in r.attributes['Client_Email']:
+        email = r.attributes['Client_Email']
+        send_email(to=email,subject=r.attributes['Project_Number'],body=html)
+        sql = f"INSERT INTO request_tracker VALUES ('{proj_num}','{r.attributes['Client_Email']}', get_current_time());"
+        con.sql(sql)
+    else:
+        logging.info(f"No confirmaion sent: Non-government Email ({r.attributes['Client_Email']})")
 
 con.sql('INSERT INTO monitor VALUES (get_current_timestamp())')

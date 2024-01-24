@@ -32,8 +32,8 @@ import logging
 
 logging.basicConfig(format='%(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S',level=logging.INFO)
 
-USER = os.environ['SRS_USER']
-AUTH = os.environ['SRS_AUTH']
+USER = os.environ['SRS_AUTH_USR']
+AUTH = os.environ['SRS_AUTH_PSW']
 ITEM = os.environ['SRS_ITEM']
 SMTP_HOST = os.environ['SMTP_HOST']
 TEST_EMAIL = os.environ.get('TEST_EMAIL')

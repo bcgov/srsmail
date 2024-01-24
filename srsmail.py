@@ -37,7 +37,7 @@ AUTH = os.environ['SRS_AUTH_PSW']
 ITEM = os.environ['SRS_ITEM']
 SMTP_HOST = os.environ['SMTP_HOST']
 TEST_EMAIL = os.environ.get('TEST_EMAIL')
-db = 'data.db'
+db = os.environ['DB_PATH']
 if not os.path.exists(db):
     con = duckdb.connect(db)
     con.sql("SET Timezone = 'UTC'")

@@ -45,7 +45,7 @@ FROM_EMAIL = os.environ.get('FROM_EMAIL')
 TEST_EMAIL = os.environ.get('TEST_EMAIL')
 
 db = os.environ['DB_PATH']
-
+home_path = os.path.dirname(__file__)
 logging.debug('Environment read')
 if not os.path.exists(db):
     logging.debug(f'Init db for first time:\n{db}')
@@ -70,7 +70,7 @@ logging.debug('Item content aquired')
 def render_template(template, request,url):
     ''' renders a Jinja template into HTML '''
  
-    templateLoader = jinja2.FileSystemLoader(searchpath="./template")
+    templateLoader = jinja2.FileSystemLoader(searchpath=os.path.join(home_path,"template"))
     templateEnv = jinja2.Environment(loader=templateLoader)
     templ = templateEnv.get_template(template)
     return templ.render(request=request,url=url)

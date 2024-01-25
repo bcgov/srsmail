@@ -31,14 +31,18 @@ import smtplib
 import logging
 
 logging.basicConfig(format='%(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S',level=logging.INFO)
-
+logging.info('Starting srsmail')
 USER = os.environ['SRS_AUTH_USR']
 AUTH = os.environ['SRS_AUTH_PSW']
 ITEM = os.environ['SRS_ITEM']
 SMTP_HOST = os.environ['SMTP_HOST']
+FROM_EMAIL = os.environ.get('FROM_EMAIL')
 TEST_EMAIL = os.environ.get('TEST_EMAIL')
 db = os.environ['DB_PATH']
+
+logging.debug('Environment read')
 if not os.path.exists(db):
+    logging.debug('Init db for first time')
     con = duckdb.connect(db)
     con.sql("SET Timezone = 'UTC'")
     con.sql('CREATE TABLE request_tracker (request_id VARCHAR PRIMARY KEY,\
@@ -47,14 +51,16 @@ if not os.path.exists(db):
     con.sql('INSERT INTO monitor VALUES (get_current_timestamp())')
     last_run = '2024-01-22 00:00:00'
 else:
+    logging.debug('Reading db')
     con = duckdb.connect(db)
     last_run = con.sql('SELECT max(activity_time) last_activity from monitor').fetchone()[0].strftime('%Y-%m-%d %H:%M:%S')
+    logging.debug(f'last run: {last_run}')
 
 # today = datetime.today().strftime('%Y-%m-%d %H:%M:%S')
 this_run = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
 srs = GIS(username=USER,password=AUTH)
 item = srs.content.get(ITEM)
-
+logging.debug('Item content aquired')
 
 def render_template(template, request,url):
     ''' renders a Jinja template into HTML '''
@@ -65,7 +71,7 @@ def render_template(template, request,url):
     return templ.render(request=request,url=url)
 
 
-def send_email(to, sender='Geospatial Services Request System<GeospatialServices.WaterLand@gov.bc.ca>',
+def send_email(to, sender='NoReply@geobc.ca>',
                 cc=None, bcc=None, subject=None, body=None):
     ''' sends email using a Jinja HTML template '''
     # Import the email modules

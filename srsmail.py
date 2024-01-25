@@ -24,25 +24,31 @@
 
 import os
 import duckdb
-from datetime import datetime,timezone
-from arcgis import GIS
+
 import jinja2
 import smtplib
 import logging
-
-logging.basicConfig(format='%(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S',level=logging.INFO)
+logging.basicConfig(format='%(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S',level=logging.DEBUG)
 logging.info('Starting srsmail')
+logging.debug('import GIS')
+from arcgis import GIS
+logging.debug('GIS imported')
+from datetime import datetime
+from datetime import timezone
+this_run = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
+# Constants
 USER = os.environ['SRS_AUTH_USR']
 AUTH = os.environ['SRS_AUTH_PSW']
 ITEM = os.environ['SRS_ITEM']
 SMTP_HOST = os.environ['SMTP_HOST']
 FROM_EMAIL = os.environ.get('FROM_EMAIL')
 TEST_EMAIL = os.environ.get('TEST_EMAIL')
+
 db = os.environ['DB_PATH']
 
 logging.debug('Environment read')
 if not os.path.exists(db):
-    logging.debug('Init db for first time')
+    logging.debug(f'Init db for first time:\n{db}')
     con = duckdb.connect(db)
     con.sql("SET Timezone = 'UTC'")
     con.sql('CREATE TABLE request_tracker (request_id VARCHAR PRIMARY KEY,\
@@ -51,12 +57,11 @@ if not os.path.exists(db):
     con.sql('INSERT INTO monitor VALUES (get_current_timestamp())')
     last_run = '2024-01-22 00:00:00'
 else:
-    logging.debug('Reading db')
+    logging.debug(f'Reading {db}')
     con = duckdb.connect(db)
     last_run = con.sql('SELECT max(activity_time) last_activity from monitor').fetchone()[0].strftime('%Y-%m-%d %H:%M:%S')
     logging.debug(f'last run: {last_run}')
 
-# today = datetime.today().strftime('%Y-%m-%d %H:%M:%S')
 this_run = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
 srs = GIS(username=USER,password=AUTH)
 item = srs.content.get(ITEM)

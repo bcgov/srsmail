@@ -42,6 +42,7 @@ AUTH = os.environ['SRS_AUTH_PSW']
 ITEM = os.environ['SRS_ITEM']
 SMTP_HOST = os.environ['SMTP_HOST']
 FROM_EMAIL = os.environ.get('FROM_EMAIL')
+URGENT_EMAIL = os.environ.get('URGENT_EMAIL')
 TEST_EMAIL = os.environ.get('TEST_EMAIL')
 
 db = os.environ['DB_PATH']
@@ -123,9 +124,12 @@ for r in records.features:
         email = TEST_EMAIL
         # with open('mail.html','w') as f:
         #     f.write(html)
-        send_email(to=email,subject=r.attributes['Project_Number'],body=html)
+        send_email(to=email,subject= f'Gespatial Service Request [{r.attributes['Project_Number']}]',body=html)
     elif '@gov.bc.ca' in r.attributes['Client_Email']:
-        email = r.attributes['Client_Email']
+        if r.attributes['Priority_Level'] == 'Urgent':
+            email = f"{r.attributes['Client_Email']};{URGENT_EMAIL}"
+        else:
+            email = r.attributes['Client_Email']
         send_email(to=email,subject=r.attributes['Project_Number'],body=html)
         sql = f"INSERT INTO request_tracker VALUES ('{proj_num}','{r.attributes['Client_Email']}', get_current_time());"
         con.sql(sql)

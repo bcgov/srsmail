@@ -125,7 +125,7 @@ for r in records.features:
         email = TEST_EMAIL
         # with open('mail.html','w') as f:
         #     f.write(html)
-        send_email(to=email,subject= f'Gespatial Service Request [{r.attributes['Project_Number']}]',body=html)
+        send_email(to=email,subject= f"Gespatial Service Request [{r.attributes['Project_Number']}]",body=html)
     elif '@gov.bc.ca' in r.attributes['Client_Email']:
         if r.attributes['Priority_Level'] == 'Urgent':
             email = f"{r.attributes['Client_Email']};{URGENT_EMAIL}"

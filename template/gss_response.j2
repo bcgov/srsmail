@@ -1,16 +1,42 @@
 <div class="body">
-Thank you for contacting Geospatial Services! <br>
-Your request has been recieved and if needed our wonderful staff may be intouch with you for more details.<br><br>
-<a href="{{ url }}">Link to your request</a>.<br><br>
+Hello {{ request.Client_Name }},  <br><br>
+Thank you for contacting Geospatial Services. 
+Your request has been recieved and we will assign someone with you shortly.
+{% if request.Priority_Level == "Urgent" %} Your request has be prioritized as {{ request.Priority_Level }}.{% endif %}
+<br><br>
+<a href="{{  url  }}">Link to your request</a>.<br><br>
 
-<table>
-{% for attribute, value in request.items() %}
-    <TR>
-        <TD>{{ attribute }}</TD>
-        <TD>{{ value }}</TD>
-    </TR>
-{% endfor %}
+
+<table border="solid 1.5px black" style="text-align: center; border-collapse: collapse; width:100%">
+<tbody>
+    <tr>
+        <th colspan="2" style="text-align: center; height: 45px; padding: 5px; background: #003366;"><strong><font style="font-size: 1.3rem; color: #ffffff">
+        Geospatial Service Request {% if request.Authorization_Type is not none %}- {{ request.Authorization_Type }} Authorizations{% endif %}
+        </font></strong></th>
+    </tr>
+    <tr>
+    <th colspan="2" style="text-align: center; height: 8px; background: #FCBA19;"></th>
+    </tr>
+    <tr>
+    <th colspan="2" style="text-align: center; height: 25px; font-size: 0.8rem;">Project Number: {{ request.Project_Number }}</th>
+    </tr>
+
+    <tr>
+    <td style="text-align: center; height: 28px; font-size: 0.9rem; background: #e3e3e3; width: 50%;"><strong><font color="#003366">Date Requested</font></strong></td>
+    <td style="text-align: center; height: 28px; font-size: 0.9rem; background: #e3e3e3; width: 50%;"><strong><font color="#003366">Date Required</font></strong></td>
+    </tr>
+    <tr>
+    <th style="text-align: center; height: 28px; font-size: 0.85rem;">{{ request.Date_Requested }}</th>
+    <th style="text-align: center; height: 28px; font-size: 0.85rem;">{{ request.Date_Required }}</th>
+    </tr>
+
+    <tr>
+    <td colspan="2" style="text-align: center; height: 28px; font-size: 0.9rem; background: #e3e3e3;"><strong><font color="#003366">Description</font></strong></td>
+    </tr>
+    <tr>
+    <th colspan="2" style="text-align: center; height: 28px; font-size: 0.85rem;">{{ request.Project_Description }}</th>
+    </tr>
+
+</tbody>
 </table>
-<p>
 </div>
-<p><br><br>

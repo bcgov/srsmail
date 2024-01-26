@@ -48,6 +48,7 @@ TEST_EMAIL = os.environ.get('TEST_EMAIL')
 db = os.environ['DB_PATH']
 home_path = os.path.dirname(__file__)
 logging.debug('Environment read')
+logging.debug(f'Current directory:{os.getcwd}')
 if not os.path.exists(db):
     logging.debug(f'Init db for first time:\n{db}')
     con = duckdb.connect(db)

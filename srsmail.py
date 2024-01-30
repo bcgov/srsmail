@@ -72,9 +72,11 @@ logging.debug('Item content aquired')
 
 def manage_resource_changes(request_table):
     # if resource asignment has been added send email
+    logging.info('checking for resource changes')
     unassigned_list = con.sql("SELECT request_id from request_tracker where lead_resource is Null").df().to_dict()['request_id'].values()
     if len(unassigned_list)>0:
         unassigned = ','.join([f"'{i}'" for i in unassigned_list])
+        logging.debug(f"found {len(unassigned)} requests with unassigned lead: {unassigned}")
         data = request_table.query(where=f"Project_Number IN ({unassigned}) and Project_Lead IS NOT NULL",
                                     out_fields="Project_Number,Project_Lead,Project_Lead_Email",
                                     return_all_records=True,return_geometry=False)
@@ -84,6 +86,8 @@ def manage_resource_changes(request_table):
                 lead_email='{r.attributes['Project_Lead_Email']}' where request_id = '{r.attributes['Project_Number']}'"
             con.sql(sql)
             # email client regarding team lead assignment
+            logging.debug(sql)
+            logging.info(f"{r.attributes['Project_Number']}: Sending request leader update to: {r.attributes['Client_Email']}")
             request_url = f'{CLIENT_URL_ROOT}%3A{r.attributes.get("OBJECTID")}'
             html = render_template('gss_update.j2', request=r.attributes,
                             url = request_url)

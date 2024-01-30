@@ -108,13 +108,14 @@ gss_project_table = item.tables[0]
 field_names = [f['name'] for f in gss_project_table.properties.fields]
 assert ['GlobalID','Date_Requested'] <= field_names
 sql = f"Date_Requested BETWEEN TIMESTAMP '{last_run}' AND TIMESTAMP '{this_run}'"
+logging.debug(sql)
 records = gss_project_table.query(where=sql,out_fields="*",return_all_records=True,return_geometry=False)
 logging.info(f'Found {len(records)} requests requiring email')
 for r in records.features:
     attributes = r.attributes
     attributes['Date_Requested']= datetime.fromtimestamp(attributes['Date_Requested'] / 1e3).strftime('%Y-%m-%d %H:%M:%S')
     attributes['Date_Required']= datetime.fromtimestamp(attributes['Date_Required'] / 1e3).strftime('%Y-%m-%d %H:%M:%S')
-    html = render_template('gss_responsev2.j2', request=r.attributes,
+    html = render_template('gss_response.j2', request=r.attributes,
                            url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ')
 
     if r.attributes['Project_Number'] is None:

@@ -63,7 +63,6 @@ else:
     logging.debug(f'Reading {db}')
     con = duckdb.connect(db)
     last_run = con.sql('SELECT max(activity_time) last_activity from monitor').fetchone()[0].strftime('%Y-%m-%d %H:%M:%S')
-    last_run = '2024-01-26 00:00:00'
     logging.debug(f'last run: {last_run}')
 
 this_run = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
@@ -73,7 +72,6 @@ logging.debug('Item content aquired')
 
 def manage_resource_changes(request_table):
     # if resource asignment has been added send email
-    # TODO: Not implemented
     unassigned_list = con.sql("SELECT request_id from request_tracker where lead_resource is Null").df().to_dict()['request_id'].values()
     if len(unassigned_list)>0:
         unassigned = ','.join([f"'{i}'" for i in unassigned_list])
@@ -81,10 +79,12 @@ def manage_resource_changes(request_table):
                                     out_fields="Project_Number,Project_Lead,Project_Lead_Email",
                                     return_all_records=True,return_geometry=False)
         for r in data:
+            # update local db
             f"UPDATE request_tracker SET lead_resource='{r.attributes['Project_Lead']}',\
                 lead_email='{r.attributes['Project_Lead_Email']}' where request_id = '{r.attributes['Project_Number']}'"
             con.sql(sql)
-            html = render_template('gss_response.j2', request=r.attributes,
+            # email client regarding team lead assignment
+            html = render_template('gss_update.j2', request=r.attributes,
                             url = request_url)
             send_email(to=TEST_EMAIL,subject= f"Gespatial Service Request [{r.attributes['Project_Number']}]",
                        body=html)
@@ -166,13 +166,13 @@ for r in records.features:
             email = TEST_EMAIL
             # with open('mail.html','w') as f:
             #     f.write(html)
-            # send_email(to=email,subject= f"Gespatial Service Request [{r.attributes['Project_Number']}]",body=html)
+            send_email(to=email,subject= f"Gespatial Service Request [{r.attributes['Project_Number']}]",body=html)
         elif '@gov.bc.ca' in r.attributes['Client_Email']:
             if r.attributes['Priority_Level'] == 'Urgent':
                 email = f"{r.attributes['Client_Email']};{URGENT_EMAIL}"
             else:
                 email = r.attributes['Client_Email']
-            send_email(to=email,subject= f"Gespatial Service Request [{r.attributes['Project_Number']}]",body=html)
+            send_email(to=email,subject= f"Geospatial Service Request [{r.attributes['Project_Number']}]",body=html)
             sql = f"INSERT INTO request_tracker VALUES ('{proj_num}','{r.attributes['Client_Email']}', get_current_time());"
             con.sql(sql)
         else:

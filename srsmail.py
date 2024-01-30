@@ -41,6 +41,7 @@ USER = os.environ['SRS_AUTH_USR']
 AUTH = os.environ['SRS_AUTH_PSW']
 ITEM = os.environ['SRS_ITEM']
 SMTP_HOST = os.environ['SMTP_HOST']
+CLIENT_URL_ROOT = os.environ.get('CLIENT_URL_ROOT')
 FROM_EMAIL = os.environ.get('FROM_EMAIL')
 URGENT_EMAIL = os.environ.get('URGENT_EMAIL')
 TEST_EMAIL = os.environ.get('TEST_EMAIL')
@@ -54,7 +55,7 @@ if not os.path.exists(db):
     con = duckdb.connect(db)
     con.sql("SET Timezone = 'UTC'")
     con.sql('CREATE TABLE request_tracker (request_id VARCHAR PRIMARY KEY,\
-             email_ind VARCHAR, email_timestamp TIMESTAMP)')
+             email_ind VARCHAR, email_timestamp TIMESTAMP,lead_resource VARCHAR, lead_email VARCHAR)')
     con.sql('CREATE TABLE monitor(activity_time TIMESTAMP)')
     con.sql('INSERT INTO monitor VALUES (get_current_timestamp())')
     last_run = '2024-01-22 00:00:00'
@@ -62,12 +63,48 @@ else:
     logging.debug(f'Reading {db}')
     con = duckdb.connect(db)
     last_run = con.sql('SELECT max(activity_time) last_activity from monitor').fetchone()[0].strftime('%Y-%m-%d %H:%M:%S')
+    last_run = '2024-01-26 00:00:00'
     logging.debug(f'last run: {last_run}')
 
 this_run = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
 srs = GIS(username=USER,password=AUTH)
 item = srs.content.get(ITEM)
 logging.debug('Item content aquired')
+
+def manage_resource_changes(request_table):
+    # if resource asignment has been added send email
+    # TODO: Not implemented
+    unassigned_list = con.sql("SELECT request_id from request_tracker where lead_resource is Null").df().to_dict()['request_id'].values()
+    if len(unassigned_list)>0:
+        unassigned = ','.join([f"'{i}'" for i in unassigned_list])
+        data = request_table.query(where=f"Project_Number IN ({unassigned}) and Project_Lead IS NOT NULL",
+                                    out_fields="Project_Number,Project_Lead,Project_Lead_Email",
+                                    return_all_records=True,return_geometry=False)
+        for r in data:
+            f"UPDATE request_tracker SET lead_resource='{r.attributes['Project_Lead']}',\
+                lead_email='{r.attributes['Project_Lead_Email']}' where request_id = '{r.attributes['Project_Number']}'"
+            con.sql(sql)
+            html = render_template('gss_response.j2', request=r.attributes,
+                            url = request_url)
+            send_email(to=TEST_EMAIL,subject= f"Gespatial Service Request [{r.attributes['Project_Number']}]",
+                       body=html)
+        return {'updated_cnt':len(unassigned_list)}
+    else:
+        return {'updated_cnt': 0}
+
+
+def add_new_request(request_id,email_ind,email_timestamp,lead_name,lead_email):
+    values = [request_id,email_ind,email_timestamp,lead_name,lead_email]
+    sql = f"INSERT INTO request_tracker VALUES(?,?,?,?,?)"
+    con.execute(sql,values)
+
+def request_is_new(request_id):
+    sql = f"SELECT request_id from request_tracker where request_id='{request_id}'"
+    ids = con.sql(sql).to_df().to_dict()
+    if len(ids['request_id'].values()):
+        return False
+    else:
+        return True
 
 def render_template(template, request,url):
     ''' renders a Jinja template into HTML '''
@@ -105,37 +142,47 @@ def send_email(to, sender='NoReply@geobc.ca>',
         server.quit()
 
 gss_project_table = item.tables[0]
+
+
 field_names = [f['name'] for f in gss_project_table.properties.fields]
 assert ['GlobalID','Date_Requested'] <= field_names
 sql = f"Date_Requested BETWEEN TIMESTAMP '{last_run}' AND TIMESTAMP '{this_run}'"
-logging.debug(sql)
 records = gss_project_table.query(where=sql,out_fields="*",return_all_records=True,return_geometry=False)
 logging.info(f'Found {len(records)} requests requiring email')
 for r in records.features:
     attributes = r.attributes
-    attributes['Date_Requested']= datetime.fromtimestamp(attributes['Date_Requested'] / 1e3).strftime('%Y-%m-%d %H:%M:%S')
-    attributes['Date_Required']= datetime.fromtimestamp(attributes['Date_Required'] / 1e3).strftime('%Y-%m-%d %H:%M:%S')
-    html = render_template('gss_response.j2', request=r.attributes,
-                           url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ')
+    if request_is_new(attributes.get('Project_Number')):
+        attributes['Date_Requested']= datetime.fromtimestamp(attributes['Date_Requested'] / 1e3).strftime('%Y-%m-%d %H:%M:%S')
+        attributes['Date_Required']= datetime.fromtimestamp(attributes['Date_Required'] / 1e3).strftime('%Y-%m-%d %H:%M:%S')
+        request_url = f'{CLIENT_URL_ROOT}%3A{attributes.get("OBJECTID")}'
+        html = render_template('gss_response.j2', request=r.attributes,
+                            url = request_url)
 
-    if r.attributes['Project_Number'] is None:
-        proj_num = 'No project'
-    else:
-        proj_num = r.attributes['Project_Number']
-    if TEST_EMAIL:
-        email = TEST_EMAIL
-        # with open('mail.html','w') as f:
-        #     f.write(html)
-        send_email(to=email,subject= f"Gespatial Service Request [{r.attributes['Project_Number']}]",body=html)
-    elif '@gov.bc.ca' in r.attributes['Client_Email']:
-        if r.attributes['Priority_Level'] == 'Urgent':
-            email = f"{r.attributes['Client_Email']};{URGENT_EMAIL}"
+        if r.attributes['Project_Number'] is None:
+            proj_num = 'No project'
         else:
-            email = r.attributes['Client_Email']
-        send_email(to=email,subject=r.attributes['Project_Number'],body=html)
-        sql = f"INSERT INTO request_tracker VALUES ('{proj_num}','{r.attributes['Client_Email']}', get_current_time());"
-        con.sql(sql)
-    else:
-        logging.info(f"No confirmaion sent: Non-government Email ({r.attributes['Client_Email']})")
+            proj_num = r.attributes['Project_Number']
+        if TEST_EMAIL:
+            email = TEST_EMAIL
+            # with open('mail.html','w') as f:
+            #     f.write(html)
+            # send_email(to=email,subject= f"Gespatial Service Request [{r.attributes['Project_Number']}]",body=html)
+        elif '@gov.bc.ca' in r.attributes['Client_Email']:
+            if r.attributes['Priority_Level'] == 'Urgent':
+                email = f"{r.attributes['Client_Email']};{URGENT_EMAIL}"
+            else:
+                email = r.attributes['Client_Email']
+            send_email(to=email,subject= f"Gespatial Service Request [{r.attributes['Project_Number']}]",body=html)
+            sql = f"INSERT INTO request_tracker VALUES ('{proj_num}','{r.attributes['Client_Email']}', get_current_time());"
+            con.sql(sql)
+        else:
+            logging.info(f"No confirmaion sent: Non-government Email ({r.attributes['Client_Email']})")
+        timestamp = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
+        add_new_request(request_id=attributes['Project_Number'],email_ind="y",
+                        email_timestamp=timestamp,lead_name=attributes.get('Project_Lead'),lead_email=attributes.get('Project_Lead_Email'))
+        
 
-con.sql('INSERT INTO monitor VALUES (get_current_timestamp())')
+manage_resource_changes(gss_project_table)
+# add activity log
+r = con.sql('INSERT INTO monitor VALUES (get_current_timestamp())')
+logging.info('Mailing complete')

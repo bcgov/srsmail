@@ -84,6 +84,7 @@ def manage_resource_changes(request_table):
                 lead_email='{r.attributes['Project_Lead_Email']}' where request_id = '{r.attributes['Project_Number']}'"
             con.sql(sql)
             # email client regarding team lead assignment
+            request_url = f'{CLIENT_URL_ROOT}%3A{r.attributes.get("OBJECTID")}'
             html = render_template('gss_update.j2', request=r.attributes,
                             url = request_url)
             send_email(to=TEST_EMAIL,subject= f"Gespatial Service Request [{r.attributes['Project_Number']}]",

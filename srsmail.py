@@ -157,7 +157,7 @@ logging.info(f'Found {len(records)} requests requiring email')
 for r in records.features:
     attributes = r.attributes
     if request_is_new(attributes.get('Project_Number')):
-        attributes['Date_Requested']= datetime.fromtimestamp(attributes['Date_Requested'] / 1e3).strftime('%Y-%m-%d %H:%M:%S')
+        attributes['Date_Requested']= datetime.fromtServiceimestamp(attributes['Date_Requested'] / 1e3).strftime('%Y-%m-%d %H:%M:%S')
         attributes['Date_Required']= datetime.fromtimestamp(attributes['Date_Required'] / 1e3).strftime('%Y-%m-%d %H:%M:%S')
         request_url = f'{CLIENT_URL_ROOT}%3A{attributes.get("OBJECTID")}'
         html = render_template('gss_response.j2', request=r.attributes,
@@ -178,7 +178,7 @@ for r in records.features:
             else:
                 email = r.attributes['Client_Email']
             send_email(to=email,subject= f"Geospatial Service Request [{r.attributes['Project_Number']}]",body=html)
-            sql = f"INSERT INTO request_tracker VALUES ('{proj_num}','{r.attributes['Client_Email']}', get_current_time());"
+            sql = f"INSERT INTO request_tracker VALUES ('{proj_num}','{r.attributes['Client_Email']}', get_current_time()),NULL,NULL;"
             con.sql(sql)
         else:
             logging.info(f"No confirmaion sent: Non-government Email ({r.attributes['Client_Email']})")

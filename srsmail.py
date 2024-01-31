@@ -127,24 +127,36 @@ def send_email(to, sender='NoReply@geobc.ca>',
     from email.mime.multipart import MIMEMultipart
     from email.mime.text import MIMEText
     from email.header import Header
-    from email.utils import formataddr
-    
+
+    # from email.mime.image import MIMEImage
+
     msg = MIMEMultipart('alternative')
     msg['From']    = sender
     msg['Subject'] = subject
     msg['To']      = to
     msg['Cc']      = cc
     msg['Bcc']     = bcc
+    
+    # with open('./template/geobc.png','rb') as f:
+    #     msgImage = MIMEImage(f.read())
+    # msgImage.add_header('Content-ID', '<geobc>')
+    # msgImage.add_header('Content-Disposition', 'inline', filename='geobc.png')
+    # msg.attach(msgImage)
+
     msg.attach(MIMEText(body, 'html'))
     server = smtplib.SMTP(SMTP_HOST)
+    response = False
     try:
         logging.info(f'sending email: {subject}')
         server.sendmail(sender, to, msg.as_string())
+        response = True
     except Exception as e:
         logging.error('Error sending email')
         logging.exception(str(e))
+        response = False
     finally:
         server.quit()
+        return response
 
 gss_project_table = item.tables[0]
 
@@ -157,8 +169,9 @@ logging.info(f'Found {len(records)} requests requiring email')
 for r in records.features:
     attributes = r.attributes
     if request_is_new(attributes.get('Project_Number')):
-        attributes['Date_Requested']= datetime.fromtimestamp(attributes['Date_Requested'] / 1e3).strftime('%Y-%m-%d %H:%M:%S')
-        attributes['Date_Required']= datetime.fromtimestamp(attributes['Date_Required'] / 1e3).strftime('%Y-%m-%d %H:%M:%S')
+        response = False
+        attributes['Date_Requested']= datetime.fromtimestamp(attributes['Date_Requested'] / 1e3).strftime('%Y-%m-%d')
+        attributes['Date_Required']= datetime.fromtimestamp(attributes['Date_Required'] / 1e3).strftime('%Y-%m-%d')
         request_url = f'{CLIENT_URL_ROOT}%3A{attributes.get("OBJECTID")}'
         html = render_template('gss_response.j2', request=r.attributes,
                             url = request_url)
@@ -171,19 +184,20 @@ for r in records.features:
             email = TEST_EMAIL
             # with open('mail.html','w') as f:
             #     f.write(html)
-            send_email(to=email,subject= f"Gespatial Service Request [{r.attributes['Project_Number']}]",body=html)
+            response = send_email(to=email,subject= f"[TEST] Gespatial Service Request [{r.attributes['Project_Number']}]",body=html)
         elif '@gov.bc.ca' in r.attributes['Client_Email']:
             if r.attributes['Priority_Level'] == 'Urgent':
                 email = f"{r.attributes['Client_Email']};{URGENT_EMAIL}"
             else:
                 email = r.attributes['Client_Email']
-            send_email(to=email,subject= f"Geospatial Service Request [{r.attributes['Project_Number']}]",body=html)
+            response = send_email(to=email,subject= f"Geospatial Service Request [{r.attributes['Project_Number']}]",body=html)
             # sql = f"INSERT INTO request_tracker VALUES ('{proj_num}','{r.attributes['Client_Email']}', get_current_time()),NULL,NULL;"
             # con.sql(sql)
         else:
             logging.info(f"No confirmaion sent: Non-government Email ({r.attributes['Client_Email']})")
         timestamp = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
-        add_new_request(request_id=attributes['Project_Number'],email_ind="y",
+        if response:
+            add_new_request(request_id=attributes['Project_Number'],email_ind="y",
                         email_timestamp=timestamp,lead_name=attributes.get('Project_Lead'),lead_email=attributes.get('Project_Lead_Email'))
         
 

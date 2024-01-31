@@ -178,8 +178,8 @@ for r in records.features:
             else:
                 email = r.attributes['Client_Email']
             send_email(to=email,subject= f"Geospatial Service Request [{r.attributes['Project_Number']}]",body=html)
-            sql = f"INSERT INTO request_tracker VALUES ('{proj_num}','{r.attributes['Client_Email']}', get_current_time()),NULL,NULL;"
-            con.sql(sql)
+            # sql = f"INSERT INTO request_tracker VALUES ('{proj_num}','{r.attributes['Client_Email']}', get_current_time()),NULL,NULL;"
+            # con.sql(sql)
         else:
             logging.info(f"No confirmaion sent: Non-government Email ({r.attributes['Client_Email']})")
         timestamp = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')

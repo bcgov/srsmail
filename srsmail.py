@@ -78,12 +78,13 @@ def manage_resource_changes(request_table):
         unassigned = ','.join([f"'{i}'" for i in unassigned_list])
         logging.debug(f"found {len(unassigned_list)} requests with unassigned lead: {unassigned}")
         data = request_table.query(where=f"Project_Number IN ({unassigned}) and Project_Lead IS NOT NULL",
-                                    out_fields="Project_Number,Project_Lead,Project_Lead_Email",
+                                    out_fields="Project_Number,Project_Lead,Project_Lead_Email,Client_Email",
                                     return_all_records=True,return_geometry=False)
         for r in data:
             # update local db
-            f"UPDATE request_tracker SET lead_resource='{r.attributes['Project_Lead']}',\
-                lead_email='{r.attributes['Project_Lead_Email']}' where request_id = '{r.attributes['Project_Number']}'"
+            sql = f"UPDATE request_tracker SET lead_resource='{r.attributes['Project_Lead']}', \
+                lead_email='{r.attributes['Project_Lead_Email']}' \
+                where request_id = '{r.attributes['Project_Number']}'"
             con.sql(sql)
             # email client regarding team lead assignment
             logging.debug(sql)
@@ -201,7 +202,7 @@ for r in records.features:
                         email_timestamp=timestamp,lead_name=attributes.get('Project_Lead'),lead_email=attributes.get('Project_Lead_Email'))
         
 
-manage_resource_changes(gss_project_table)
+manage_resource_changes(request_table=gss_project_table)
 # add activity log
 r = con.sql('INSERT INTO monitor VALUES (get_current_timestamp())')
 logging.info('Mailing complete')

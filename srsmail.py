@@ -76,7 +76,7 @@ def manage_resource_changes(request_table):
     unassigned_list = con.sql("SELECT request_id from request_tracker where lead_resource is Null").df().to_dict()['request_id'].values()
     if len(unassigned_list)>0:
         unassigned = ','.join([f"'{i}'" for i in unassigned_list])
-        logging.debug(f"found {len(unassigned)} requests with unassigned lead: {unassigned}")
+        logging.debug(f"found {len(unassigned_list)} requests with unassigned lead: {unassigned}")
         data = request_table.query(where=f"Project_Number IN ({unassigned}) and Project_Lead IS NOT NULL",
                                     out_fields="Project_Number,Project_Lead,Project_Lead_Email",
                                     return_all_records=True,return_geometry=False)

@@ -164,3 +164,4 @@ cython_debug/
 
 # duckdb
 *.db
+data.db.wal

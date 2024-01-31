@@ -78,26 +78,31 @@ def manage_resource_changes(request_table):
         unassigned = ','.join([f"'{i}'" for i in unassigned_list])
         logging.debug(f"found {len(unassigned_list)} requests with unassigned lead: {unassigned}")
         data = request_table.query(where=f"Project_Number IN ({unassigned}) and Project_Lead IS NOT NULL",
-                                    out_fields="Project_Number,Project_Lead,Project_Lead_Email,Client_Email",
+                                    out_fields="*",
                                     return_all_records=True,return_geometry=False)
+        if len(data.features)==0: logging.debug('No new Project Lead assignements')
         for r in data:
-            # update local db
-            sql = f"UPDATE request_tracker SET lead_resource='{r.attributes['Project_Lead']}', \
-                lead_email='{r.attributes['Project_Lead_Email']}' \
-                where request_id = '{r.attributes['Project_Number']}'"
-            con.sql(sql)
             # email client regarding team lead assignment
-            logging.debug(sql)
             logging.info(f"{r.attributes['Project_Number']}: Sending request leader update to: {r.attributes['Client_Email']}")
+            attributes = r.attributes
+            attributes['Date_Requested']= datetime.fromtimestamp(attributes['Date_Requested'] / 1e3).strftime('%Y-%m-%d')
+            attributes['Date_Required']= datetime.fromtimestamp(attributes['Date_Required'] / 1e3).strftime('%Y-%m-%d')
             request_url = f'{CLIENT_URL_ROOT}%3A{r.attributes.get("OBJECTID")}'
-            html = render_template('gss_update.j2', request=r.attributes,
+            html = render_template('gss_update.j2', request=attributes,
                             url = request_url)
             if TEST_EMAIL:
                 tomail = TEST_EMAIL
             else:
                 tomail= r.attributes['Client_Email']
-            send_email(to=TEST_EMAIL,subject= f"Gespatial Service Request [{r.attributes['Project_Number']}]",
+            if tomail:
+                send_email(to=tomail,subject= f"Gespatial Service Request [{r.attributes['Project_Number']}]",
                        body=html)
+                        # update local db
+                sql = f"UPDATE request_tracker SET lead_resource='{r.attributes['Project_Lead']}', \
+                    lead_email='{r.attributes['Project_Lead_Email']}' \
+                    where request_id = '{r.attributes['Project_Number']}'"
+                con.sql(sql)
+                logging.debug(f'Email sent to: {tomail}')
         return {'updated_cnt':len(unassigned_list)}
     else:
         return {'updated_cnt': 0}

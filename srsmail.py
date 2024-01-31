@@ -94,10 +94,9 @@ def manage_resource_changes(request_table):
                 tomail = TEST_EMAIL
             else:
                 tomail= r.attributes['Client_Email']
-            if tomail:
-                send_email(to=tomail,subject= f"Gespatial Service Request [{r.attributes['Project_Number']}]",
+            if tomail is not None:
+                send_email(to=tomail,subject= f"Gespatial Service Request Update[{r.attributes['Project_Number']}]",
                        body=html)
-                        # update local db
                 sql = f"UPDATE request_tracker SET lead_resource='{r.attributes['Project_Lead']}', \
                     lead_email='{r.attributes['Project_Lead_Email']}' \
                     where request_id = '{r.attributes['Project_Number']}'"

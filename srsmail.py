@@ -92,6 +92,10 @@ def manage_resource_changes(request_table):
             request_url = f'{CLIENT_URL_ROOT}%3A{r.attributes.get("OBJECTID")}'
             html = render_template('gss_update.j2', request=r.attributes,
                             url = request_url)
+            if TEST_EMAIL:
+                tomail = TEST_EMAIL
+            else:
+                tomail= r.attributes['Client_Email']
             send_email(to=TEST_EMAIL,subject= f"Gespatial Service Request [{r.attributes['Project_Number']}]",
                        body=html)
         return {'updated_cnt':len(unassigned_list)}

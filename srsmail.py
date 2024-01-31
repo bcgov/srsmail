@@ -157,7 +157,7 @@ logging.info(f'Found {len(records)} requests requiring email')
 for r in records.features:
     attributes = r.attributes
     if request_is_new(attributes.get('Project_Number')):
-        attributes['Date_Requested']= datetime.fromtServiceimestamp(attributes['Date_Requested'] / 1e3).strftime('%Y-%m-%d %H:%M:%S')
+        attributes['Date_Requested']= datetime.fromtimestamp(attributes['Date_Requested'] / 1e3).strftime('%Y-%m-%d %H:%M:%S')
         attributes['Date_Required']= datetime.fromtimestamp(attributes['Date_Required'] / 1e3).strftime('%Y-%m-%d %H:%M:%S')
         request_url = f'{CLIENT_URL_ROOT}%3A{attributes.get("OBJECTID")}'
         html = render_template('gss_response.j2', request=r.attributes,

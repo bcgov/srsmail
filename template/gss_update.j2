@@ -4,11 +4,10 @@
 Hello {{ request.Client_Name }},  <br><br>
 We just wanted to update you on your service request to Geospatial Services. 
 {{ request.Project_Lead }} has been assigned to your request and will be contacting you in the near future. We have included their contact email below.
-</p><br> 
-<p><a href="mailto:{{ request.Project_Lead_Email }}">{{ request.Project_Lead_Email }}</a></p>
+</p>
+<p><a style="font-size:20px" href="mailto:{{ request.Project_Lead_Email }}">{{ request.Project_Lead_Email }}</a></p>
 
-<br><br>
-<a href="{{  url  }}">Link to your request</a>.<br><br>
+<a style="font-size:20px" href="{{  url  }}">Link to your request</a>.<br><br>
 
 
 <table border="solid 1.5px black" style="text-align: center; border-collapse: collapse; width:100%">

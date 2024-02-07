@@ -184,11 +184,14 @@ for r in records.features:
         request_url = f'{CLIENT_URL_ROOT}%3A{attributes.get("OBJECTID")}'
         html = render_template('gss_response.j2', request=r.attributes,
                             url = request_url)
+        if attributes['Priority_Level']== "Urgent":
+            logging.info(f"Urgent Request: {attributes['Project_Number']}")
+            cc = ""
+        else:
+            cc = URGENT_EMAIL
 
         if TEST_EMAIL and r.attributes['Project_Number'] is not None:
             email = TEST_EMAIL
-            # with open('mail.html','w') as f:
-            #     f.write(html)
             response = send_email(to=email,subject= f"[TEST] Gespatial Service Request [{r.attributes['Project_Number']}]",body=html)
         elif '@gov.bc.ca' in r.attributes['Client_Email'] and r.attributes['Project_Number'] is not None:
             if r.attributes['Priority_Level'] == 'Urgent':

@@ -31,7 +31,7 @@ import logging
 logging.basicConfig(format='%(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S',level=logging.DEBUG)
 logging.info('Starting srsmail')
 logging.debug('import GIS')
-from arcgis import GIS
+from arcgis.gis import GIS
 logging.debug('GIS imported')
 from datetime import datetime
 from datetime import timezone

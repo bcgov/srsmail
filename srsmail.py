@@ -184,26 +184,26 @@ for r in records.features:
         request_url = f'{CLIENT_URL_ROOT}%3A{attributes.get("OBJECTID")}'
         html = render_template('gss_response.j2', request=r.attributes,
                             url = request_url)
-
-        if r.attributes['Project_Number'] is None:
-            proj_num = 'No project'
+        if attributes['Priority_Level']== "Urgent":
+            logging.info(f"Urgent Request: {attributes['Project_Number']}")
+            cc = ""
         else:
-            proj_num = r.attributes['Project_Number']
-        if TEST_EMAIL:
+            cc = URGENT_EMAIL
+
+        if TEST_EMAIL and r.attributes['Project_Number'] is not None:
             email = TEST_EMAIL
-            # with open('mail.html','w') as f:
-            #     f.write(html)
             response = send_email(to=email,subject= f"[TEST] Gespatial Service Request [{r.attributes['Project_Number']}]",body=html)
-        elif '@gov.bc.ca' in r.attributes['Client_Email']:
+        elif '@gov.bc.ca' in r.attributes['Client_Email'] and r.attributes['Project_Number'] is not None:
             if r.attributes['Priority_Level'] == 'Urgent':
                 email = f"{r.attributes['Client_Email']};{URGENT_EMAIL}"
             else:
                 email = r.attributes['Client_Email']
             response = send_email(to=email,subject= f"Geospatial Service Request [{r.attributes['Project_Number']}]",body=html)
-            # sql = f"INSERT INTO request_tracker VALUES ('{proj_num}','{r.attributes['Client_Email']}', get_current_time()),NULL,NULL;"
-            # con.sql(sql)
         else:
-            logging.info(f"No confirmaion sent: Non-government Email ({r.attributes['Client_Email']})")
+            if r.attributes['Project_Number'] is not None:
+                logging.info(f"No project number for request {r.attributes['OBJECTID']}")
+            else:
+                logging.info(f"No confirmaion sent: Non-government Email ({r.attributes['Client_Email']})")
         timestamp = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
         if response:
             add_new_request(request_id=attributes['Project_Number'],email_ind="y",

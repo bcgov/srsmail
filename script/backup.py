@@ -2,7 +2,7 @@ import os
 import logging
 import tempfile
 import json
-from arcgis import GIS
+from arcgis.gis import GIS
 from datetime import datetime
 from minio import Minio
 from minio.error import S3Error

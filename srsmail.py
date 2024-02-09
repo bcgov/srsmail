@@ -185,7 +185,7 @@ for r in records.features:
         # request_url = f'{CLIENT_URL_ROOT}%3A{attributes.get("OBJECTID")}'
         request_url = f'{CLIENT_URL_ROOT}?data_filter={CLIENT_EXPERIENCE_DS}%3A\
             lower%28Client_Email%29%3D%27{attributes.get("Client_Email")}%27\
-            &data_id={CLIENT_EXPERIENCE_DS}%3A{attributes.get("OBJECTID")}'
+            &data_id={CLIENT_EXPERIENCE_DS}%3A{attributes.get("OBJECTID")}'.replace(' ','')
         html = render_template('gss_response.j2', request=r.attributes,
                             url = request_url)
         if attributes['Priority_Level']== "Urgent":

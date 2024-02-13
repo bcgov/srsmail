@@ -88,7 +88,9 @@ def manage_resource_changes(request_table):
             attributes = r.attributes
             attributes['Date_Requested']= datetime.fromtimestamp(attributes['Date_Requested'] / 1e3).strftime('%Y-%m-%d')
             attributes['Date_Required']= datetime.fromtimestamp(attributes['Date_Required'] / 1e3).strftime('%Y-%m-%d')
-            request_url = f'{CLIENT_URL_ROOT}%3A{r.attributes.get("OBJECTID")}'
+            request_url = f'{CLIENT_URL_ROOT}?data_filter={CLIENT_EXPERIENCE_DS}%3A\
+                lower%28Client_Email%29%3D%27{attributes.get("Client_Email")}%27\
+                &data_id={CLIENT_EXPERIENCE_DS}%3A{attributes.get("OBJECTID")}'.replace(' ','')
             html = render_template('gss_update.j2', request=attributes,
                             url = request_url)
             if TEST_EMAIL:

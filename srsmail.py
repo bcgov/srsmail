@@ -73,7 +73,7 @@ logging.debug('Item content aquired')
 
 def manage_resource_changes(request_table):
     # if resource asignment has been added send email
-    logging.info('checking for resource changes')
+    logging.debug('checking for resource changes')
     unassigned_list = con.sql("SELECT request_id from request_tracker where lead_resource is Null").df().to_dict()['request_id'].values()
     if len(unassigned_list)>0:
         unassigned = ','.join([f"'{i}'" for i in unassigned_list])
@@ -159,7 +159,7 @@ def send_email(to, sender='NoReply@geobc.ca>',
     server = smtplib.SMTP(SMTP_HOST)
     response = False
     try:
-        logging.info(f'sending email: {subject}')
+        logging.debug(f'sending email: {subject}')
         server.sendmail(sender, to, msg.as_string())
         response = True
     except Exception as e:
@@ -177,7 +177,7 @@ field_names = [f['name'] for f in gss_project_table.properties.fields]
 assert ['GlobalID','Date_Requested'] <= field_names
 sql = f"Date_Requested BETWEEN TIMESTAMP '{last_run}' AND TIMESTAMP '{this_run}'"
 records = gss_project_table.query(where=sql,out_fields="*",return_all_records=True,return_geometry=False)
-logging.info(f'Found {len(records)} requests requiring email')
+logging.debug(f'Found {len(records)} requests requiring email')
 for r in records.features:
     attributes = r.attributes
     if request_is_new(attributes.get('Project_Number')):
@@ -204,6 +204,7 @@ for r in records.features:
                 email = f"{r.attributes['Client_Email']};{URGENT_EMAIL}"
             else:
                 email = r.attributes['Client_Email']
+            logging.info(f"{r.attributes['Project_Number']}: Sending mail to {email}")
             response = send_email(to=email,subject= f"Geospatial Service Request [{r.attributes['Project_Number']}]",body=html)
         else:
             if r.attributes['Project_Number'] is not None:

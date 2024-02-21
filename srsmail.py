@@ -28,11 +28,21 @@ import duckdb
 import jinja2
 import smtplib
 import logging
-logging.basicConfig(format='%(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S',level=logging.DEBUG)
-logging.info('Starting srsmail')
-logging.debug('import GIS')
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+ch = logging.StreamHandler()
+ch.setLevel(logging.DEBUG)
+fh = logging.FileHandler(r'SRSMAIL.LOG')
+fh.setLevel(logging.INFO)
+formatter = logging.Formatter(fmt='%(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
+ch.setFormatter(formatter)
+fh.setFormatter(formatter)
+logger.addHandler(fh)
+logger.addHandler(ch)
+logger.info('Starting srsmail')
+logger.debug('import GIS')
 from arcgis.gis import GIS
-logging.debug('GIS imported')
+logger.debug('GIS imported')
 from datetime import datetime
 from datetime import timezone
 this_run = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
@@ -49,10 +59,10 @@ TEST_EMAIL = os.environ.get('TEST_EMAIL')
 
 db = os.environ['DB_PATH']
 home_path = os.path.dirname(__file__)
-logging.debug('Environment read')
-logging.debug(f'Current directory:{os.getcwd}')
+logger.debug('Environment read')
+logger.debug(f'Current directory:{os.getcwd}')
 if not os.path.exists(db):
-    logging.debug(f'Init db for first time:\n{db}')
+    logger.debug(f'Init db for first time:\n{db}')
     con = duckdb.connect(db)
     con.sql("SET Timezone = 'UTC'")
     con.sql('CREATE TABLE request_tracker (request_id VARCHAR PRIMARY KEY,\
@@ -61,36 +71,36 @@ if not os.path.exists(db):
     con.sql('INSERT INTO monitor VALUES (get_current_timestamp())')
     last_run = '2024-01-22 00:00:00'
 else:
-    logging.debug(f'Reading {db}')
+    logger.debug(f'Reading {db}')
     con = duckdb.connect(db)
     last_run = con.sql('SELECT max(activity_time) last_activity from monitor').fetchone()[0].strftime('%Y-%m-%d %H:%M:%S')
-    logging.debug(f'last run: {last_run}')
+    logger.debug(f'last run: {last_run}')
 
 this_run = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
 srs = GIS(username=USER,password=AUTH)
 item = srs.content.get(ITEM)
-logging.debug('Item content aquired')
+logger.debug('Item content aquired')
 
 def manage_resource_changes(request_table):
     # if resource asignment has been added send email
-    logging.debug('checking for resource changes')
+    logger.debug('checking for resource changes')
     unassigned_list = con.sql("SELECT request_id from request_tracker where lead_resource is Null").df().to_dict()['request_id'].values()
     if len(unassigned_list)>0:
         unassigned = ','.join([f"'{i}'" for i in unassigned_list])
-        logging.debug(f"found {len(unassigned_list)} requests with unassigned lead: {unassigned}")
+        logger.debug(f"found {len(unassigned_list)} requests with unassigned lead: {unassigned}")
         data = request_table.query(where=f"Project_Number IN ({unassigned}) and Project_Lead IS NOT NULL",
                                     out_fields="*",
                                     return_all_records=True,return_geometry=False)
-        if len(data.features)==0: logging.debug('No new Project Lead assignements')
+        if len(data.features)==0: logger.debug('No new Project Lead assignements')
         for r in data:
             # email client regarding team lead assignment
-            logging.info(f"{r.attributes['Project_Number']}: Sending request leader update to: {r.attributes['Client_Email']}")
+            logger.info(f"{r.attributes['Project_Number']}: Sending request leader update to: {r.attributes['Client_Email']}")
             attributes = r.attributes
             attributes['Date_Requested']= datetime.fromtimestamp(attributes['Date_Requested'] / 1e3).strftime('%Y-%m-%d')
             attributes['Date_Required']= datetime.fromtimestamp(attributes['Date_Required'] / 1e3).strftime('%Y-%m-%d')
             request_url = f'{CLIENT_URL_ROOT}?data_filter={CLIENT_EXPERIENCE_DS}%3A\
                 lower%28Client_Email%29%3D%27{attributes.get("Client_Email")}%27\
-                &data_id={CLIENT_EXPERIENCE_DS}%3A{attributes.get("OBJECTID")}'.replace(' ','')
+                &data_id={CLIENT_EXPERIENCE_DS}%3A{attributes.get("OBJECTID")}&org=governmentofbc'.replace(' ','')
             html = render_template('gss_update.j2', request=attributes,
                             url = request_url)
             if TEST_EMAIL:
@@ -98,13 +108,13 @@ def manage_resource_changes(request_table):
             else:
                 tomail= r.attributes['Client_Email']
             if tomail is not None:
-                send_email(to=tomail,subject= f"Gespatial Service Request Update[{r.attributes['Project_Number']}]",
+                send_email(to=tomail,sender=FROM_EMAIL,subject= f"Gespatial Service Request Update[{r.attributes['Project_Number']}]",
                        body=html)
                 sql = f"UPDATE request_tracker SET lead_resource='{r.attributes['Project_Lead']}', \
                     lead_email='{r.attributes['Project_Lead_Email']}' \
                     where request_id = '{r.attributes['Project_Number']}'"
                 con.sql(sql)
-                logging.debug(f'Email sent to: {tomail}')
+                logger.debug(f'Email sent to: {tomail}')
         return {'updated_cnt':len(unassigned_list)}
     else:
         return {'updated_cnt': 0}
@@ -159,12 +169,12 @@ def send_email(to, sender='NoReply@geobc.ca>',
     server = smtplib.SMTP(SMTP_HOST)
     response = False
     try:
-        logging.debug(f'sending email: {subject}')
+        logger.debug(f'sending email: {subject}')
         server.sendmail(sender, to, msg.as_string())
         response = True
     except Exception as e:
-        logging.error('Error sending email')
-        logging.exception(str(e))
+        logger.error('Error sending email')
+        logger.exception(str(e))
         response = False
     finally:
         server.quit()
@@ -172,12 +182,12 @@ def send_email(to, sender='NoReply@geobc.ca>',
 
 gss_project_table = item.tables[0]
 
-
-field_names = [f['name'] for f in gss_project_table.properties.fields]
+fields = gss_project_table.properties.fields
+field_names = [f['name'] for f in fields]
 assert ['GlobalID','Date_Requested'] <= field_names
 sql = f"Date_Requested BETWEEN TIMESTAMP '{last_run}' AND TIMESTAMP '{this_run}'"
 records = gss_project_table.query(where=sql,out_fields="*",return_all_records=True,return_geometry=False)
-logging.debug(f'Found {len(records)} requests requiring email')
+logger.debug(f'Found {len(records)} requests requiring email')
 for r in records.features:
     attributes = r.attributes
     if request_is_new(attributes.get('Project_Number')):
@@ -187,30 +197,30 @@ for r in records.features:
         # request_url = f'{CLIENT_URL_ROOT}%3A{attributes.get("OBJECTID")}'
         request_url = f'{CLIENT_URL_ROOT}?data_filter={CLIENT_EXPERIENCE_DS}%3A\
             lower%28Client_Email%29%3D%27{attributes.get("Client_Email")}%27\
-            &data_id={CLIENT_EXPERIENCE_DS}%3A{attributes.get("OBJECTID")}'.replace(' ','')
+            &data_id={CLIENT_EXPERIENCE_DS}%3A{attributes.get("OBJECTID")}&org=governmentofbc'.replace(' ','')
         html = render_template('gss_response.j2', request=r.attributes,
                             url = request_url)
         if attributes['Priority_Level']== "Urgent":
-            logging.info(f"Urgent Request: {attributes['Project_Number']}")
+            logger.info(f"Urgent Request: {attributes['Project_Number']}")
             cc = ""
         else:
             cc = URGENT_EMAIL
 
         if TEST_EMAIL and r.attributes['Project_Number'] is not None:
             email = TEST_EMAIL
-            response = send_email(to=email,subject= f"[TEST] Gespatial Service Request [{r.attributes['Project_Number']}]",body=html)
+            response = send_email(to=email,sender=FROM_EMAIL,subject= f"[TEST] Gespatial Service Request [{r.attributes['Project_Number']}]",body=html)
         elif '@gov.bc.ca' in r.attributes['Client_Email'] and r.attributes['Project_Number'] is not None:
             if r.attributes['Priority_Level'] == 'Urgent':
                 email = f"{r.attributes['Client_Email']};{URGENT_EMAIL}"
             else:
                 email = r.attributes['Client_Email']
-            logging.info(f"{r.attributes['Project_Number']}: Sending mail to {email}")
-            response = send_email(to=email,subject= f"Geospatial Service Request [{r.attributes['Project_Number']}]",body=html)
+            logger.info(f"{r.attributes['Project_Number']}: Sending mail to {email}")
+            response = send_email(to=email,sender=FROM_EMAIL,subject= f"Geospatial Service Request [{r.attributes['Project_Number']}]",body=html)
         else:
             if r.attributes['Project_Number'] is not None:
-                logging.info(f"No project number for request {r.attributes['OBJECTID']}")
+                logger.info(f"No project number for request {r.attributes['OBJECTID']}")
             else:
-                logging.info(f"No confirmaion sent: Non-government Email ({r.attributes['Client_Email']})")
+                logger.info(f"No confirmaion sent: Non-government Email ({r.attributes['Client_Email']})")
         timestamp = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
         if response:
             add_new_request(request_id=attributes['Project_Number'],email_ind="y",
@@ -220,4 +230,4 @@ for r in records.features:
 manage_resource_changes(request_table=gss_project_table)
 # add activity log
 r = con.sql('INSERT INTO monitor VALUES (get_current_timestamp())')
-logging.info('Mailing complete')
+logger.info('Mailing complete')

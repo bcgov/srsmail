@@ -4,8 +4,10 @@ import tempfile
 import json
 from arcgis.gis import GIS
 from datetime import datetime
-from minio import Minio
-from minio.error import S3Error
+# from minio import Minio
+# from minio.error import S3Error
+import boto3
+from botocore.exceptions import ClientError
 
 SRS_AUTH_USR = os.environ['SRS_AUTH_USR']
 SRS_AUTH_PSW = os.environ['SRS_AUTH_PSW']
@@ -48,19 +50,25 @@ def create_temp_backup(item):
 def upload_files_to_objectstore(file_list):
     # upload a list of files to objectstore
     log.debug('Connecting to object storage')
-    objstore = Minio(OBJECTSTORE_URL,
-        access_key = OBJECTSTORE_KEY,
-        secret_key = OBJECTSTORE_SECRET_KEY,)
+    objstore = boto3.client('s3',endpoint_url='https://'+OBJECTSTORE_URL+'/',
+        aws_access_key_id = OBJECTSTORE_KEY,
+        aws_secret_access_key = OBJECTSTORE_SECRET_KEY,)
 
     log.debug('Object store connected')
-    sub_folder = f"bkup_{datetime.today().strftime('%d%m%Y')}"
+    sub_folder = f"bkup_{datetime.today().strftime('%Y%m%d')}"
     for ul_file in file_list:
         file_name = os.path.basename(ul_file)
         log.debug(f'Upload bkup to storage: {OBJECTSTORE_FOLDER}/{sub_folder}/{file_name}')
-        objstore.fput_object(
-            OBJECTSTORE_BUCKET, f'{OBJECTSTORE_FOLDER}/{sub_folder}/{file_name}', ul_file,
-        )
+        # objstore.fput_object(
+        #     OBJECTSTORE_BUCKET, f'{OBJECTSTORE_FOLDER}/{sub_folder}/{file_name}', ul_file,
+        # )
+        outfile = f'{OBJECTSTORE_FOLDER}/{sub_folder}/{file_name}'
+        try:
+            r = objstore.upload_file(ul_file,OBJECTSTORE_BUCKET,outfile)
+        except ClientError as e:
+            log.error(e)
         log.debug('Upload complete')
+    return True
 
 def get_folder_items(target_folder,bucket, backup_folder):
     items = mh.users.me.items(folder=target_folder)

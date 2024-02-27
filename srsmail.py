@@ -157,20 +157,29 @@ def send_email(to, sender='NoReply@geobc.ca>',
     msg['Subject'] = subject
     msg['To']      = to
     msg['Cc']      = cc
-    msg['Bcc']     = bcc
-    
+        
     # with open('./template/geobc.png','rb') as f:
     #     msgImage = MIMEImage(f.read())
     # msgImage.add_header('Content-ID', '<geobc>')
     # msgImage.add_header('Content-Disposition', 'inline', filename='geobc.png')
     # msg.attach(msgImage)
-
+    toaddrs = []
+    if to:
+        tolist = to.split(';')
+        toaddrs = toaddrs + tolist
+    if cc:
+        cclist = cc.split(';')
+        toaddrs= toaddrs + cclist
+    if bcc:
+        bcclist = bcc.split(';')
+        toaddrs= toaddrs + bcclist
+    
     msg.attach(MIMEText(body, 'html'))
     server = smtplib.SMTP(SMTP_HOST)
     response = False
     try:
         logger.debug(f'sending email: {subject}')
-        server.sendmail(sender, to, msg.as_string())
+        server.sendmail(sender, toaddrs, msg.as_string())
         response = True
     except Exception as e:
         logger.error('Error sending email')

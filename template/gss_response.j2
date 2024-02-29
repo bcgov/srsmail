@@ -1,12 +1,16 @@
 <div class="body">
+<p>
 Hello {{ request.Client_Name }},  <br><br>
 Thank you for contacting Geospatial Services. 
-Your request has been received and we will assign someone with you shortly.
+Your request has been received and we will assign someone to you shortly.
 {% if request.Priority_Level == "Urgent" %} Your request has be prioritized as {{ request.Priority_Level }}.{% endif %}
-<br><br>
-<a style="font-size:20px" href="{{  url  }}">Link to your request</a>.<br><br>
 
-
+<br>
+View Request: <a style="font-size:17px" href="{{  url  }}">{{ request.Project_Number }}</a>.<br><br>
+<u>Your request system credentials</u><br>
+Username:   {{ request.CLIENT_AGO_ACCOUNT }}<br>
+Password:  {{ request.CLIENT_AGO_SECRET }}
+</p>
 <table border="solid 1.5px black" style="text-align: center; border-collapse: collapse; width:100%">
 <tbody>
     <tr>
@@ -39,4 +43,13 @@ Your request has been received and we will assign someone with you shortly.
     
 </tbody>
 </table>
+<p>
+Sincerely, <br><br>
+<b>Geospatial Services</b> <br>
+GeoBC | Natural Resource Information & Digital Services<br>
+</p>
+<hr style="width:50%;text-align:left;margin-left:0">
+<p style="font-size:10px">
+Please do not reply to this email.
+</p>
 </div>

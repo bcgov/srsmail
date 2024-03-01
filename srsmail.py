@@ -55,6 +55,7 @@ CLIENT_EXPERIENCE_DS = os.environ.get('CLIENT_EXPERIENCE_DS')
 CLIENT_URL_ROOT = os.environ.get('CLIENT_URL_ROOT')
 CLIENT_AGO_ACCOUNT = os.environ.get('CLIENT_AGO_ACCOUNT')
 CLIENT_AGO_SECRET = os.environ.get('CLIENT_AGO_SECRET')
+CLIENT_REQUEST_URL = os.environ.get('CLIENT_REQUEST_URL')
 FROM_EMAIL = os.environ.get('FROM_EMAIL')
 URGENT_EMAIL = os.environ.get('URGENT_EMAIL')
 TEST_EMAIL = os.environ.get('TEST_EMAIL')
@@ -102,6 +103,7 @@ def manage_resource_changes(request_table):
             attributes['Date_Required']= datetime.fromtimestamp(attributes['Date_Required'] / 1e3).strftime('%Y-%m-%d')
             attributes['CLIENT_AGO_ACCOUNT']= CLIENT_AGO_ACCOUNT
             attributes['CLIENT_AGO_SECRET']= CLIENT_AGO_SECRET
+            attributes['CLIENT_REQUEST_URL']= CLIENT_REQUEST_URL
             request_url = f'{CLIENT_URL_ROOT}?data_filter={CLIENT_EXPERIENCE_DS}%3A\
                 lower%28Client_Email%29%3D%27{attributes.get("Client_Email")}%27\
                 &data_id={CLIENT_EXPERIENCE_DS}%3A{attributes.get("OBJECTID")}&org=governmentofbc'.replace(' ','')
@@ -209,6 +211,7 @@ for r in records.features:
         attributes['Date_Required']= datetime.fromtimestamp(attributes['Date_Required'] / 1e3).strftime('%Y-%m-%d')
         attributes['CLIENT_AGO_ACCOUNT']= CLIENT_AGO_ACCOUNT
         attributes['CLIENT_AGO_SECRET']= CLIENT_AGO_SECRET
+        attributes['CLIENT_REQUEST_URL']= CLIENT_REQUEST_URL
         # request_url = f'{CLIENT_URL_ROOT}%3A{attributes.get("OBJECTID")}'
         request_url = f'{CLIENT_URL_ROOT}?data_filter={CLIENT_EXPERIENCE_DS}%3A\
             lower%28Client_Email%29%3D%27{attributes.get("Client_Email")}%27\

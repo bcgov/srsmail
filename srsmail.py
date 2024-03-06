@@ -50,6 +50,7 @@ this_run = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
 USER = os.environ['SRS_AUTH_USR']
 AUTH = os.environ['SRS_AUTH_PSW']
 ITEM = os.environ['SRS_ITEM']
+RESOURCE_ITEM = os.environ.get('RESOURCE_ITEM')
 SMTP_HOST = os.environ['SMTP_HOST']
 CLIENT_EXPERIENCE_DS = os.environ.get('CLIENT_EXPERIENCE_DS')
 CLIENT_URL_ROOT = os.environ.get('CLIENT_URL_ROOT')
@@ -84,14 +85,15 @@ srs = GIS(username=USER,password=AUTH)
 item = srs.content.get(ITEM)
 logger.debug('Item content aquired')
 
-def manage_resource_changes(request_table):
+def manage_resource_changes():
     # if resource asignment has been added send email
     logger.debug('checking for resource changes')
     unassigned_list = con.sql("SELECT request_id from request_tracker where lead_resource is Null").df().to_dict()['request_id'].values()
     if len(unassigned_list)>0:
         unassigned = ','.join([f"'{i}'" for i in unassigned_list])
         logger.debug(f"found {len(unassigned_list)} requests with unassigned lead: {unassigned}")
-        data = request_table.query(where=f"Project_Number IN ({unassigned}) and Project_Lead IS NOT NULL",
+        project_resource_view = srs.content.get(RESOURCE_ITEM).tables[0]
+        data = project_resource_view.query(where=f"Project_Number IN ({unassigned}) and Resource_Name IS NOT NULL and Resource_Type='Coordinator'",
                                     out_fields="*",
                                     return_all_records=True,return_geometry=False)
         if len(data.features)==0: logger.debug('No new Project Lead assignements')
@@ -116,8 +118,9 @@ def manage_resource_changes(request_table):
             if tomail is not None:
                 send_email(to=tomail,sender=FROM_EMAIL,subject= f"Gespatial Service Request Update[{r.attributes['Project_Number']}]",
                        body=html)
-                sql = f"UPDATE request_tracker SET lead_resource='{r.attributes['Project_Lead']}', \
-                    lead_email='{r.attributes['Project_Lead_Email']}' \
+                resource_name = r.attributes['Resource_Name'].replace("'"," ")
+                sql = f"UPDATE request_tracker SET lead_resource='{resource_name}', \
+                    lead_email='{r.attributes['Resource_Contact_Email']}' \
                     where request_id = '{r.attributes['Project_Number']}'"
                 con.sql(sql)
                 logger.debug(f'Email sent to: {tomail}')
@@ -245,7 +248,7 @@ for r in records.features:
                         email_timestamp=timestamp,lead_name=attributes.get('Project_Lead'),lead_email=attributes.get('Project_Lead_Email'))
         
 
-manage_resource_changes(request_table=gss_project_table)
+manage_resource_changes()
 # add activity log
 r = con.sql('INSERT INTO monitor VALUES (get_current_timestamp())')
 logger.info('Mailing complete')
